@@ -25,11 +25,6 @@ async def main():
                 connection_status = ConnectionStatus.NOT_CONNECTED
             await uasyncio.sleep_ms(500)
 
-    def load_destinations():
-        print("Loading destinations...")
-        services.appflow.get_channels()
-        print("Loaded destinations!")
-
     async def check_ready_to_deploy():
         nonlocal dev_id_to_deploy
 
