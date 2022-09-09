@@ -91,10 +91,10 @@ query GetChannels($appId: String!){
     channels {
       edges {
         node {
-          id
           name
           build {
             id
+            uuid
           }
         }
       }
@@ -113,3 +113,18 @@ query GetChannels($appId: String!){
         "Authorization": "Bearer " + Environment.APPFLOW_TOKEN
     }).json()
     return response["data"]["app"]["channels"]["edges"]
+
+async def deploy_build(build_id):
+    try:
+        deploy_url = f"{Environment.API_URL}/apps/{Environment.APP_ID}/channels/{Environment.PRODUCTION_CHANNEL_ID}"
+        print(f"Deploy URL: {deploy_url}")
+        print(f"Snapshot ID: {build_id}")
+        print(f"Auth token: {Environment.APPFLOW_TOKEN}")
+        urequests.patch(deploy_url, json={
+            "snapshot_id": build_id
+        }, headers={
+            "Authorization": "Bearer " + Environment.APPFLOW_TOKEN
+        }).json()
+    except Exception as e:
+        print("Error deploying build:")
+        print(e)

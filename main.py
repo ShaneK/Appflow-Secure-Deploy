@@ -14,7 +14,7 @@ big_red_button.value(0)
 async def main():
     connection_status = ConnectionStatus.NOT_CONNECTED
     big_red_button_in_progress = False
-    ready_to_deploy = False
+    dev_id_to_deploy = None
 
     async def monitor_connection_status(station):
         nonlocal connection_status
@@ -30,22 +30,33 @@ async def main():
         services.appflow.get_channels()
         print("Loaded destinations!")
 
-
     async def check_ready_to_deploy():
-        nonlocal ready_to_deploy
-        while not ready_to_deploy:
-            # Load critical data
-            # Builds
-            builds = await services.appflow.get_builds()
-            print(f"Builds: {builds}")
-            # We've just made a big request, let something else go
-            await uasyncio.sleep_ms(50)
-            # Destinations
-            destinations = await services.appflow.get_channels()
-            print(f"Destinations: {destinations}")
-            # We've just made a big request, let something else go
-            ready_to_deploy = True
-            await uasyncio.sleep_ms(50)
+        nonlocal dev_id_to_deploy
+
+        destinations = await services.appflow.get_channels()
+        dev_build_id = None
+        prod_build_id = None
+        for destination in destinations:
+            print('Destination:')
+            destination = destination['node']
+            print(destination)
+            try:
+                if destination['name'] == 'Development' and destination['build'] is not None:
+                    dev_build_id = destination['build']['uuid']
+                if destination['name'] == 'Production' and destination['build'] is not None:
+                    prod_build_id = destination['build']['uuid']
+            except Exception as e:
+                print(e)
+
+        print(f'Dev build id: {dev_build_id}')
+        print(f'Prod build id: {prod_build_id}')
+        if dev_build_id != prod_build_id:
+            print("Ready to deploy!")
+            dev_id_to_deploy = dev_build_id
+
+        # print(f"Destinations: {destinations}")
+        # We've just made a big request, let something else go
+        await uasyncio.sleep_ms(5000)
 
     async def setup_wifi():
         try:
@@ -59,13 +70,14 @@ async def main():
             print("----\nIP Info:\n----")
             print(f"Internal IP Address: {intra_ipaddress}")
             print(f"External IP Address: {response['origin']}")
+            # Give the connection LED time to update
+            await uasyncio.sleep_ms(100)
             uasyncio.create_task(check_ready_to_deploy())
         except Exception as e:
             print(e)
 
-    async def display_connection_status():
+    def display_connection_status():
         while True:
-            led.value(big_red_button.value())
             if connection_status == ConnectionStatus.CONNECTED:
                 led.value(1)
             elif connection_status == ConnectionStatus.CONNECTING:
@@ -79,14 +91,19 @@ async def main():
     async def monitor_big_red_button():
         while True:
             nonlocal big_red_button_in_progress
-            # if big_red_button.value() == 1:
-            if False:
+            nonlocal dev_id_to_deploy
+            if big_red_button.value() == 1:
                 if big_red_button_in_progress:
                     await uasyncio.sleep_ms(50)
                     continue
 
                 big_red_button_in_progress = True
-                print("Button pressed! Fetching builds...")
+                if dev_id_to_deploy is None:
+                    await uasyncio.sleep_ms(1000)
+                    continue
+
+                await services.appflow.deploy_build(dev_id_to_deploy)
+                dev_id_to_deploy = None
                 big_red_button_in_progress = False
 
             # For when the big read button isn't down
