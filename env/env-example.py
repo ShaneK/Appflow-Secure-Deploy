@@ -2,7 +2,6 @@
 class Environment:
     SSID = ""
     SSID_PASSWORD = ""
-    BB_API_KEY = ""
     APPFLOW_TOKEN = ""
     APP_ID = ""
     PRODUCTION_CHANNEL_ID = ""
